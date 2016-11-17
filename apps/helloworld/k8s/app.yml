@@ -1,0 +1,93 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: helloworld
+  namespace: default
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  template:
+    metadata:
+       labels:
+         app: helloworld
+    spec:
+      containers:
+      - name: nginx
+        image: dev
+        imagePullPolicy: Never
+        command: ["nginx", "-g", "daemon off;"]
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/www/
+          name: src
+        - mountPath: /etc/nginx/sites-enabled/
+          name: nginx-conf
+      - name: php
+        image: dev
+        imagePullPolicy: Never
+        command: ["php-fpm7.0", "--nodaemonize", "--force-stderr"]
+        env:
+          - name: COMPOSER_HOME
+            value: /composer/
+          - name: SSH_AUTH_SOCK
+            value: /sock/sock
+          - name: DBGP_IDEKEY
+            value: PHPSTORM
+          - name: DATABASE_URL
+            value: "mysql://root:root@demo-db/demo"
+        volumeMounts:
+        - mountPath: /var/www/
+          name: src
+        - mountPath: /cache/
+          name: cache
+        - mountPath: /sock
+          name: ssh-sock
+        - mountPath: /composer/
+          name: composer
+      - name: ssh
+        image: dev
+        imagePullPolicy: Never
+        command: ["/usr/sbin/sshd", "-D"]
+        volumeMounts:
+          - mountPath: /var/www/
+            name: src
+          - mountPath: /cache/
+            name: cache
+      volumes:
+      - name: src
+        hostPath:
+          path: /www-data/apps/helloworld/src
+      - name: cache
+        emptyDir:
+          medium: Memory
+      - name: composer
+        hostPath:
+          path: /www-data/apps/composer
+      - name: ssh-sock
+        hostPath:
+          path: /sock
+      - name: nginx-conf
+        configMap:
+          name: helloworld
+          items:
+          - key: nginx.conf
+            path: nginx.conf
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: helloworld
+spec:
+  type: ClusterIP
+  clusterIP: 10.0.0.100
+  ports:
+  - port: 80
+    name: http
+    targetPort: 80
+  - port: 22
+    name: ssh
+    targetPort: 22
+  selector:
+    app: helloworld

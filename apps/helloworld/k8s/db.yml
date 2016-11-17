@@ -1,0 +1,42 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: demp-db
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: demo-db
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_DATABASE
+              value: "demo"
+            - name: MYSQL_ROOT_PASSWORD
+              value: "root"
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: db
+      volumes:
+        - name: db
+          hostPath:
+            path: /db
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: demo-db
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3306
+    name: http
+    targetPort: 3306
+  selector:
+    app: demo-db

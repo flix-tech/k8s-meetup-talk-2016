@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helloworld
+  namespace: default
+data:
+  nginx.conf: |
+    server {
+        listen       80;
+        server_name  0.0.0.0;
+
+        error_log /dev/stderr;
+        access_log /dev/stdout;
+
+        root           /var/www/web;
+
+        location / {
+            # try to serve file directly, fallback to front controller
+            try_files $uri /app_dev.php$is_args$args;
+        }
+
+        location ~ ^/(app_dev|app)\.php(/|$) {
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+            include        fastcgi_params;
+        }
+    }
+  xdebug.ini: |
+    xdebug.remote_enable = 1
+    xdebug.remote_host=10.10.0.1
+    xdebug.remote_port=9000
